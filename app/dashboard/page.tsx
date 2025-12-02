@@ -8,6 +8,7 @@ export default function Dashboard() {
   const [url, setUrl] = useState("");
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [notification, setNotification] = useState<string | null>(null);
 
   useEffect(() => {
     if (session) fetchProducts();
@@ -22,10 +23,21 @@ export default function Dashboard() {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    await fetch("/api/track", {
+    setNotification(null);
+
+    const res = await fetch("/api/track", {
       method: "POST",
       body: JSON.stringify({ url }),
     });
+    
+    const data = await res.json();
+
+    if (data.requiresConfirmation) {
+        setNotification("Agent added! We sent a confirmation email to your inbox. You MUST click the link inside to start receiving alerts.");
+    } else if (data.success) {
+        setNotification("Agent active.");
+    }
+
     setUrl("");
     setLoading(false);
     fetchProducts(); // refresh list
@@ -57,19 +69,24 @@ export default function Dashboard() {
     <div className="min-h-screen bg-[#191917] text-[#FFF] p-8">
       <div className="max-w-4xl mx-auto">
         <header className="flex justify-between items-center mb-12">
-          <h1 className="text-3xl font-bold tracking-tighter">
-            Price & Stock <span className="text-[#D5FF40]">AUTOMATED TRACKER</span>
-          </h1>
+            <div className="tracking-tight flex items-center text-xl md:text-2xl">
+                <span className="font-bold text-white">Prisynced</span>
+                <span className=" mx-2">|</span>
+                <span className="text-[#D5FF40] font-bold">AUTOMATED TRACKER</span>
+            </div>
           <div className="flex items-center gap-4">
             <span className="text-[#C0C2B8]">{session.user?.email}</span>
-            <button 
-                onClick={() => signOut()}
-                className="text-sm border border-[#C0C2B8] px-3 py-1 rounded hover:bg-[#C0C2B8] hover:text-[#191917]"
-            >
+            <button onClick={() => signOut()} className="text-sm border border-[#C0C2B8] px-3 py-1 rounded hover:bg-[#C0C2B8] hover:text-[#191917]">
                 Sign Out
             </button>
           </div>
         </header>
+
+        {notification && (
+            <div className="mb-6 p-4 bg-[#D5FF40] text-[#191917] font-semibold rounded-lg border border-[#D5FF40] bg-opacity-90">
+                {notification}
+            </div>
+        )}
 
         <section className="mb-12">
           <form onSubmit={handleAdd} className="flex gap-4">

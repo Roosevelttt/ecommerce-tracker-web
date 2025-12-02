@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Price & Stock Tracker",
+  title: "Prisynced - Price Tracker",
   description: "Automated Amazon Tracker",
 };
 
