@@ -9,6 +9,10 @@ export default function Dashboard() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPass, setAuthPass] = useState("");
+  const [authError, setAuthError] = useState("");
 
   useEffect(() => {
     if (session) fetchProducts();
@@ -33,14 +37,14 @@ export default function Dashboard() {
     const data = await res.json();
 
     if (data.requiresConfirmation) {
-        setNotification("Agent added! We sent a confirmation email to your inbox. You MUST click the link inside to start receiving alerts.");
+        setNotification("Agent added! Check your email to confirm alerts.");
     } else if (data.success) {
         setNotification("Agent active.");
     }
 
     setUrl("");
     setLoading(false);
-    fetchProducts(); // refresh list
+    fetchProducts();
   };
 
   const handleUnsubscribe = async (productUrl: string) => {
@@ -52,15 +56,101 @@ export default function Dashboard() {
     fetchProducts();
   }
 
+  const handleAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError("");
+    setLoading(true);
+
+    if (isRegistering) {
+        const res = await fetch("/api/register", {
+            method: "POST",
+            body: JSON.stringify({ email: authEmail, password: authPass }),
+        });
+        
+        if (res.ok) {
+            const result = await signIn("credentials", {
+                redirect: false,
+                email: authEmail,
+                password: authPass
+            });
+            if (result?.error) setAuthError("Registration successful, but failed to auto-login.");
+        } else {
+            const data = await res.json();
+            setAuthError(data.error || "Registration failed");
+        }
+    } else {
+        const result = await signIn("credentials", {
+            redirect: false,
+            email: authEmail,
+            password: authPass
+        });
+        if (result?.error) {
+            setAuthError("Invalid email or password");
+        }
+    }
+    setLoading(false);
+  };
+
   if (!session) {
     return (
-      <div className="min-h-screen bg-[#191917] flex items-center justify-center text-[#FFF]">
-        <button 
-          onClick={() => signIn("google")}
-          className="bg-[#D5FF40] text-[#191917] px-6 py-3 rounded-lg font-bold hover:opacity-90 transition"
-        >
-          Sign in to access Tracker
-        </button>
+      <div className="min-h-screen bg-[#191917] flex items-center justify-center text-[#FFF] p-4">
+        <div className="w-full max-w-md bg-[#222] border border-[#333] p-8 rounded-xl shadow-2xl">
+            <h2 className="text-2xl font-bold mb-6 text-center">
+                {isRegistering ? "Create Account" : "Welcome Back"}
+            </h2>
+
+            <form onSubmit={handleAuthSubmit} className="flex flex-col gap-4">
+                <input 
+                    type="email" 
+                    placeholder="Email" 
+                    required
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    className="bg-[#191917] border border-[#333] p-3 rounded text-white focus:border-[#D5FF40] outline-none"
+                />
+                <input 
+                    type="password" 
+                    placeholder="Password" 
+                    required
+                    value={authPass}
+                    onChange={(e) => setAuthPass(e.target.value)}
+                    className="bg-[#191917] border border-[#333] p-3 rounded text-white focus:border-[#D5FF40] outline-none"
+                />
+                
+                {authError && <p className="text-red-400 text-sm">{authError}</p>}
+
+                <button 
+                    disabled={loading}
+                    className="bg-[#D5FF40] text-[#191917] font-bold py-3 rounded hover:opacity-90 mt-2"
+                >
+                    {loading ? "Processing..." : (isRegistering ? "Sign Up" : "Sign In")}
+                </button>
+            </form>
+
+            <div className="my-6 flex items-center gap-4">
+                <div className="h-1 bg-[#333] flex-1"></div>
+                <span className="text-[#666] text-sm">OR</span>
+                <div className="h-1 bg-[#333] flex-1"></div>
+            </div>
+
+            <button 
+                onClick={() => signIn("google")}
+                className="w-full bg-white text-black font-bold py-3 rounded hover:bg-gray-200 transition flex items-center justify-center gap-2"
+            >
+                <span className="font-serif font-bold text-xl">G</span> 
+                Continue with Google
+            </button>
+
+            <p className="mt-6 text-center text-[#666] text-sm">
+                {isRegistering ? "Already have an account?" : "Don't have an account?"}
+                <button 
+                    onClick={() => { setIsRegistering(!isRegistering); setAuthError(""); }}
+                    className="ml-2 text-[#D5FF40] hover:underline"
+                >
+                    {isRegistering ? "Sign In" : "Sign Up"}
+                </button>
+            </p>
+        </div>
       </div>
     );
   }
